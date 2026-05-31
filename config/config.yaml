@@ -1,0 +1,4 @@
+datasets:
+  name: wikipedia
+  split: train[:25000]
+  output_dataset_raw: data/pretrain/raw/wiki_en_id.txt
