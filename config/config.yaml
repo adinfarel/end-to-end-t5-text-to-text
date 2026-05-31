@@ -1,4 +1,6 @@
 datasets:
-  name: wikipedia
-  split: train[:25000]
+  name: wikimedia/wikipedia
+  id_config: 20231101.en
+  en_config: 20231101.id
+  max_row_datasets: 25000
   output_dataset_raw: data/pretrain/raw/wiki_en_id.txt
