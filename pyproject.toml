@@ -20,7 +20,8 @@ dependencies = [
     "jsonlines",
     "python-box",
     "nltk",
-    "sacrebleu"
+    "sacrebleu",
+    "torch"
 ]
 
 [project.scripts]
@@ -36,6 +37,7 @@ packages = [
     "finetune",
     "eval",
     "configs",
+    "utils",
 ]
 
 [tool.pytest]
