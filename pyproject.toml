@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "end-to-end-t5-text-to-text"
+version = "0.1.0"
+description = "T5-style Encoder-Decoder from scratch - pre-training + EN-ID translation"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "Adinfarel" }
+]
+keywords = ["t5", "transformer", "seq2seq", "translation", "nlp", "deep-learning"]
+
+dependencies = [
+    "datasets",
+    "matplotlib",
+    "jsonlines",
+    "python-box",
+    "nltk",
+    "sacrebleu"
+]
+
+[project.scripts]
+almond-train-tokenizer = "tokenizer.train:main"
+almond-pretrain        = "basemodel.training.train:main"
+almond-finetune        = "finetune.training.train:main"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "tokenizer",
+    "data",
+    "basemodel",
+    "finetune",
+    "eval",
+    "configs",
+]
+
+[tool.pytest]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
