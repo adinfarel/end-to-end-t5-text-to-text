@@ -6,3 +6,7 @@ __pycache__/
 venv/
 env/
 ENV/
+
+# Data
+data/pretrain/raw/*
+!data/pretrain/raw/README.md

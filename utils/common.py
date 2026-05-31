@@ -22,7 +22,7 @@ def load_yaml(file: Path, use_box: bool = True) -> Box | dict:
     if not file.exists():
         raise FileNotFoundError(f"File not found: {str(file)}")
     
-    with open(file, mode='w') as f:
+    with open(file, mode='r', encoding='utf-8') as f:
         content = yaml.safe_load(f)
     
     if use_box:
