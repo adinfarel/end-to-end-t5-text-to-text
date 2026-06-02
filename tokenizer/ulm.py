@@ -14,7 +14,6 @@ from collections import Counter
 from itertools import islice
 from pathlib import Path
 from collections.abc import Iterator, Iterable
-from turtle import end_fill
 
 class AlmondUnigramTokenizer:
     """SentencePiece-style Unigram tokenizer."""
@@ -22,7 +21,7 @@ class AlmondUnigramTokenizer:
         self, 
         whitespace_marker: str = "_",
         num_extra_ids: int = 100,
-        unk_log_prob: float = -20.0,
+        unk_log_prob: float = -20.00,
     ) -> None:
         if not isinstance(whitespace_marker, str):
             raise TypeError(
@@ -519,7 +518,7 @@ class AlmondUnigramTokenizer:
         
         return seed_vocab
 
-    def _initiliaze_vocabulary(
+    def _initialize_vocabulary(
         self,
         seed_vocab: Counter[str],
     ) -> None:
@@ -774,156 +773,386 @@ class AlmondUnigramTokenizer:
             max_piece_length=max_piece_length,
         )
         
+    def _forward_backward_expected_counts(
+        self,
+        normalized_text: str,
+        max_piece_length: int,
+    ) -> tuple[dict[str, float], float]:
+        """Run forward-backward over one normalized text."""
+        self._require_initialized()
         
-if __name__ == "__main__":
-    tokenizer = AlmondUnigramTokenizer("_", num_extra_ids=10)
-    # print(tokenizer._require_initialized()) 
-    
-    text = [
-        "Aku bisa AI",
-        "     Aku lolos \n\n big tech               "
-    ]
-    seed_vocab = tokenizer._build_seed_vocab_from_texts(
-        text,
-        max_piece_length=4,
-        seed_vocab_size=30
-    )
-    
-    print("SEED VOCAB SIZE:", len(seed_vocab))
-    print("TOP 30 PIECES:")
-    for piece, count in seed_vocab.most_common(30):
-        print(f"{piece!r:<7} -> {count}")
-    
-    print("-"*40)
+        if not isinstance(normalized_text, str):
+            raise TypeError(f"normalized_text must be str, got {type(normalized_text).__name__}")
 
-    for tx in text:
-        NORM = tokenizer._normalize_text(tx)
-        candidates = tokenizer._extract_candidate_pieces_from_text(
-            tx,
-            4
+        if not isinstance(max_piece_length, int):
+            raise TypeError(f"max_piece_length must be int, got {type(max_piece_length).__name__}")
+
+        if max_piece_length <= 0:
+            raise ValueError(f"max_piece_length must be positive, got {max_piece_length}")
+        
+        if not normalized_text:
+            return {}, 0.0
+        
+        n = len(normalized_text)
+        
+        edges_by_start: list[list[tuple[int, str, float]]] = [[] for _ in range(n + 1)]
+        
+        for start in range(n):
+            edges_by_start[start] = list(
+                self._iter_valid_pieces_from_position(
+                    normalized_text=normalized_text,
+                    start=start,
+                    max_piece_length=max_piece_length,
+                    allow_unk=True
+                )
+            )
+        
+        alpha = [float("-inf")] * (n + 1)
+        alpha[0] = 0.0
+        
+        for start in range(n):
+            if alpha[start] == float("-inf"):
+                continue
+            
+            for end, _piece, log_prob in edges_by_start[start]:
+                alpha[end] = self._logaddexp(alpha[end], alpha[start] + log_prob)
+        
+        log_likelihood = alpha[n]
+        
+        if log_likelihood == float("-inf"):
+            raise RuntimeError(
+                f"failed to compute forward probabilities; no valid segmentations. "
+                f"normalized_text={normalized_text!r}"
+            )
+        
+        beta = [float("-inf")] * (n + 1)
+        beta[n] = 0.0
+        
+        for start in range(n - 1, -1, -1):
+            scores: list[float] = []
+            
+            for end, _piece, log_prob in edges_by_start[start]:
+                if beta[end] == float("-inf"):
+                    continue
+                
+                scores.append(log_prob + beta[end])
+            
+            beta[start] = self._logsumexp(scores)
+        
+        expected_counts: dict[str, float] = {}
+        
+        for start in range(n):
+            if alpha[start] == float("-inf"):
+                continue
+            
+            for end, piece, log_prob in edges_by_start[start]:
+                if beta[end] == float("-inf"):
+                    continue
+                
+                posterior_log_prob = alpha[start] + log_prob + beta[end] - log_likelihood
+                posterior = math.exp(posterior_log_prob)
+                
+                if piece == self.unk_token:
+                    continue
+                
+                expected_counts[piece] = expected_counts.get(piece, 0.0) + posterior
+        
+        return expected_counts, log_likelihood
+    
+    def _em_step(
+        self,
+        texts: list[str],
+        max_piece_length: int,
+        smoothing: float = 1e-8,
+    ) -> float:
+        """Run one EM update over raw text samples."""
+        self._require_initialized()
+        
+        if not isinstance(texts, list):
+            raise TypeError(
+                f"texts must be list of str, got {type(texts).__name__}"
+            )
+        
+        if not isinstance(max_piece_length, int):
+            raise TypeError(
+                f"max_piece_length must be int, got {type(max_piece_length).__name__}"
+            )
+        
+        if max_piece_length <= 0:
+            raise ValueError(
+                f"max_piece_length must be positive, got {max_piece_length}"
+            )
+        
+        if not isinstance(smoothing, float):
+            raise TypeError(f"smoothing must be float, got {type(smoothing).__name__}")
+
+        if smoothing < 0:
+            raise ValueError(f"smoothing must be non-negative, got {smoothing}")
+        
+        total_expected_counts: dict[str, float] = {}
+        total_log_likelihood = 0.0
+        num_texts = 0
+        
+        for text in texts:
+            if not isinstance(text, str):
+                raise TypeError(f"all texts must be str, got {type(text).__name__}")
+            
+            normalized = self._normalize_text(text)
+            
+            if not normalized:
+                continue
+            
+            expected_counts, log_likelihood = self._forward_backward_expected_counts(
+                normalized_text=normalized,
+                max_piece_length=max_piece_length,
+            )
+            
+            for piece, count in expected_counts.items():
+                total_expected_counts[piece] = total_expected_counts.get(piece, 0.0) + count
+                
+            total_log_likelihood += log_likelihood
+            num_texts += 1
+        
+        if num_texts == 0:
+            raise ValueError("cannot run EM step on empty texts")
+        
+        if not total_expected_counts:
+            raise RuntimeError("EM step produced empty expected counts")
+        
+        updated_counts: dict[str, float] = {}
+        
+        for piece in self.piece_log_probs:
+            updated_counts[piece] = total_expected_counts.get(piece, 0.0) + smoothing
+        
+        normalizer = sum(expected_counts.values())
+        
+        if normalizer <= 0:
+            raise RuntimeError(f"invalid EM normalizer: {normalizer}")
+        
+        for piece, count in updated_counts.items():
+            probability = count / normalizer
+            self.piece_log_probs[piece] = math.log(probability)
+        
+        average_negative_log_likelihood = -total_log_likelihood / num_texts
+        
+        return average_negative_log_likelihood
+
+    def _prune_vocabulary(
+        self,
+        target_vocab_size: int,
+    ) -> None:
+        """Prune normal pieces to target vocab size while keeping:
+        - all special tokens
+        - all single-character pieces
+        """
+        self._require_initialized()
+        
+        if not isinstance(target_vocab_size, int):
+            raise TypeError(
+                f"target_vocab_size must be int, got {type(target_vocab_size).__name__}"
+            )
+
+        if target_vocab_size <= len(self.special_tokens):
+            raise ValueError(
+                "target_vocab_size must be larger than number of special tokens; "
+                f"got target_vocab_size={target_vocab_size}, "
+                f"num_special_tokens={len(self.special_tokens)}"
+            )
+    
+        required_pieces = {
+            piece
+            for piece in self.piece_log_probs
+            if len(piece) == 1
+        }
+        
+        normal_budget = target_vocab_size - len(required_pieces) 
+        
+        if len(required_pieces) > normal_budget:
+            normal_budget = len(required_pieces)
+        
+        sorted_pieces = sorted(
+            self.piece_log_probs.items(),
+            key=lambda item: item[1],
+            reverse=True,
         )
-
-        print(f"RAW     : {repr(tx)}")
-        print(f"NORM    : {repr(NORM)}")
-        print(f"DENORM  : {repr(tokenizer._denormalize_text(NORM))}")
-        print(f"TOTAL CANDIDATES    : {len(candidates)}")
-        print(f"\nTop 20:")
-        for piece, count in candidates.most_common(20):
-            print(f"{piece!r:<7} -> {count}")
-        print("-"*40)
-    
-    print("\n\nINITIALIZING VOCABULARY...")
-    tokenizer._initiliaze_vocabulary(seed_vocab)
-    print(tokenizer._is_initialized())
-    print(f"VOCAB SIZE: {len(tokenizer.piece_to_id)}")
-    print("TOP 30 PIECES IN VOCAB:")
-    for token in islice(tokenizer.piece_to_id, 30):
-        print(f"{token!r:<7} -> {tokenizer.piece_to_id[token]} (log_prob={tokenizer.piece_log_probs.get(token, 'N/A')})")
         
-    print(f"PAD TOKEN ID: {tokenizer.pad_token_id}")
-    print(f"UNK TOKEN ID: {tokenizer.unk_token_id}")
-    print(f"EOS TOKEN ID: {tokenizer.eos_token_id}")
-    print(f"DECODER START TOKEN ID: {tokenizer.decoder_start_token_id}")
+        kept_pieces: set[str] = set(required_pieces)
+        
+        for piece, log_prob in sorted_pieces:
+            if len(kept_pieces) >= normal_budget:
+                break
+        
+            kept_pieces.add(piece)
+        
+        old_log_probs = self.piece_log_probs
+        
+        self.piece_to_id.clear()
+        self.id_to_piece.clear()
+        self.piece_log_probs = {
+            piece: old_log_probs[piece]
+            for piece in kept_pieces
+        }
+        
+        next_id = 0
+        
+        for token in self.special_tokens:
+            self.piece_to_id[token] = next_id
+            self.id_to_piece[next_id] = token
+            next_id += 1
+        
+        for piece, _log_prob in sorted(
+            self.piece_log_probs.items(),
+            key=lambda item: item[1],
+            reverse=True
+        ):
+            self.piece_to_id[piece] = next_id
+            self.id_to_piece[next_id] = piece
+            next_id += 1
+        
+        self.pad_token_id = self.piece_to_id[self.pad_token]
+        self.eos_token_id = self.piece_to_id[self.eos_token]
+        self.unk_token_id = self.piece_to_id[self.unk_token]
+        self.decoder_start_token_id = self.pad_token_id
     
-    print("\n\nTESTING ENCODE TEXT TO TOKEN IDS...")
-    text_enc = "Aku big tech"
-    
-    no_eos_token_ids = tokenizer.encode(
-        text=text_enc,
-        max_piece_length=4,
-        add_eos=False
-    )
-    eos_token_ids = tokenizer.encode(
-        text=text_enc,
-        max_piece_length=4,
-        add_eos=True
-    )
-    print(f"Text to Encode      : {text_enc!r}")
-    print(f"Normalized Text     : {tokenizer._normalize_text(text_enc)!r}")
-    print(f"Token IDs (no EOS)  : {no_eos_token_ids}")
-    print(f"Token IDs (with EOS): {eos_token_ids}")
-    print("-"*40)
-    
-    print("\n\nTESTING DECODE TOKEN IDS TO TEXT...")
-    decoded_no_eos = tokenizer.decode(
-        token_ids=no_eos_token_ids,
-        skip_special_tokens=True
-    )
-    decoded_with_eos = tokenizer.decode(
-        token_ids=eos_token_ids,
-        skip_special_tokens=False
-    )
-    print(f"Token IDs to Decode     : {no_eos_token_ids}")
-    print(f"Decoded Text (no EOS)   : {decoded_no_eos!r}")
-    print(f"Decoded Text (with EOS) : {decoded_with_eos!r}")
-    print("-"*40)
-    
-    test_pieces = [
-        "_Aku",
-        "_big",
-        "_Google",
-        "</s>",
-        ""
+    def train(
+        self,
+        texts: Iterable[str],
+        vocab_size: int,
+        seed_vocab_size: int,
+        max_piece_length: int,
+        num_em_steps: int = 5,
+        shrinking_factor: float = 0.75,
+        smoothing: float = 1e-8
+    ) -> None:
+        """Train simplified Unigram LM tokenizer."""
+        if not isinstance(vocab_size, int):
+            raise TypeError(f"vocab_size must be int, got {type(vocab_size).__name__}")
+
+        if not isinstance(seed_vocab_size, int):
+            raise TypeError(f"seed_vocab_size must be int, got {type(seed_vocab_size).__name__}")
+        
+        if not isinstance(num_em_steps, int):
+            raise TypeError(f"num_em_steps must be int, got {type(num_em_steps).__name__}")
+        
+        if not isinstance(shrinking_factor, float):
+            raise TypeError(f"shrinking_factor must be float, got {type(shrinking_factor).__name__}")
+        
+        if vocab_size <= len(self.special_tokens):
+            raise ValueError(
+                f"vocab_size must be greater than special token count "
+                f"({len(self.special_tokens)}), got {vocab_size}"
+            )
+        
+        if seed_vocab_size < vocab_size:
+            raise ValueError(
+                f"seed_vocab_size should be >= vocab_size, got "
+                f"seed_vocab_size={seed_vocab_size}, vocab_size={vocab_size}"
+            )
+        
+        if num_em_steps <= 0:
+            raise ValueError(
+                f"num_em_steps must be positive, got {num_em_steps}"
+            )
+        
+        if not (0.0 < shrinking_factor < 1.0):
+            raise ValueError(
+                f"shrinking_factor must be between 0 and 1, got {shrinking_factor}"
+            )
+        
+        texts = list(texts)
+        
+        if not texts:
+            raise ValueError("texts must not be empty")
+        
+        seed_vocab = self._build_seed_vocab_from_texts(
+            texts=texts,
+            max_piece_length=max_piece_length,
+            seed_vocab_size=seed_vocab_size,
+        )
+        
+        self._initialize_vocabulary(seed_vocab=seed_vocab)
+        
+        print(f"Initial vocab size: {len(self.piece_to_id)}")
+        
+        for step in range(1, num_em_steps + 1):
+            avg_null = self._em_step(
+                texts=texts,
+                max_piece_length=max_piece_length,
+                smoothing=smoothing,
+            )
+        
+            current_vocab_size = len(self.piece_to_id)
+            
+            if current_vocab_size > vocab_size:
+                next_vocab_size = max(
+                    vocab_size,
+                    int(current_vocab_size * shrinking_factor)
+                )
+
+                self._prune_vocabulary(next_vocab_size)
+            
+            print(
+                f"EM step {step}/{num_em_steps} | "
+                f"avg_null={avg_null:.4f} | "
+                f"vocab_size={len(self.piece_to_id)}"
+            )
+        
+        final_nll = self._em_step(
+            texts=texts,
+            max_piece_length=max_piece_length,
+            smoothing=smoothing,
+        )
+        
+        if len(self.piece_to_id) > vocab_size:
+            self._prune_vocabulary(vocab_size)
+        
+        print(
+            f"Training complete | final_avg_nll={final_nll:.4f} | "
+            f"final_vocab_size={len(self.piece_to_id)}"
+        )
+                
+if __name__ == "__main__":
+    texts = [
+        "Aku lolos big tech",
+        "Aku belajar tokenizer",
+        "big tech membuka peluang",
+        "Saya ingin bekerja di Google",
+        "I want to work at Google",
+        "Google is a big tech company",
     ]
     
-    for piece in test_pieces:
-        log_prob = tokenizer._get_piece_log_prob(piece)
-        print(f"Piece: {piece!r:12s}, Log Prob: {log_prob}")
-    
-    print("\n\nTESTING VITERBI SEGMENTATION...")
-    seed_vocab_2 = Counter({
-        "_": 10,
-        "A": 2,
-        "k": 2,
-        "u": 2,
-        "_A": 4,
-        "ku": 3,
-        "_Aku": 5,
-        "_big": 3,
-        "_tech": 3,
-    })
-    
-    tokenizer._initiliaze_vocabulary(seed_vocab_2)
-    normalized = tokenizer._normalize_text("Aku big tech")
-    
-    pieces = tokenizer._viterbi_segment(
-        normalized_text=normalized,
-        max_piece_length=8
+    tokenizer = AlmondUnigramTokenizer(
+        whitespace_marker="_",
+        num_extra_ids=20,
+        unk_log_prob=-20.00,
     )
     
-    print(f"Normalized Text : {normalized!r}")
-    print(f"Segmented Pieces: {pieces}")
-    print(f"Denormalized    : {tokenizer._denormalize_text(''.join(pieces))!r}")
+    tokenizer.train(
+        texts=texts,
+        vocab_size=80,
+        seed_vocab_size=200,
+        max_piece_length=12,
+        num_em_steps=5,
+        shrinking_factor=0.75,
+    )
     
+    text = "Aku ingin bekerja di Google"
     
-    print("\n\nTESTING ENCODE PIECES...")
-    seed_vocab = Counter({
-        "_": 10,
-        "A": 2,
-        "k": 2,
-        "u": 2,
-        "b": 2,
-        "i": 2,
-        "g": 2,
-        "t": 2,
-        "e": 2,
-        "c": 2,
-        "h": 2,
-        "_Aku": 5,
-        "_big": 4,
-        "_tech": 4,
-        "te": 3,
-        "ch": 3,
-    })
-    tokenizer._initiliaze_vocabulary(seed_vocab)
-    text_to_encode = "Aku big tech"
+    ids = tokenizer.encode(
+        text=text,
+        max_piece_length=12,
+        add_eos=True,
+    )
     
     pieces = tokenizer._encode_pieces(
-        text=text_to_encode,
-        max_piece_length=8
+        text=text,
+        max_piece_length=12
     )
     
-    print(f"Text to Encode  : {text_to_encode!r}")
-    print(f"Normalized Text : {tokenizer._normalize_text(text_to_encode)!r}")
-    print(f"Encoded Pieces  : {pieces}")
-    print(f"Denormalized    : {tokenizer._denormalize_text(''.join(pieces))!r}")
+    decoded = tokenizer.decode(ids)
+    
+    print(f"TEXT    : {text}")
+    print(f"PIECES  : {pieces}")
+    print(f"IDS     : {ids}")
+    print(f"DECODED : {decoded}")
+    print(f"VOCAB   :\n{tokenizer.piece_to_id}")
