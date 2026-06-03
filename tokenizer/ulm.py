@@ -1075,7 +1075,7 @@ class AlmondUnigramTokenizer:
         print(f"Initial vocab size: {len(self.piece_to_id)}")
         
         for step in range(1, num_em_steps + 1):
-            avg_null = self._em_step(
+            avg_nll = self._em_step(
                 texts=texts,
                 max_piece_length=max_piece_length,
                 smoothing=smoothing,
@@ -1093,7 +1093,7 @@ class AlmondUnigramTokenizer:
             
             print(
                 f"EM step {step}/{num_em_steps} | "
-                f"avg_null={avg_null:.4f} | "
+                f"avg_nll={avg_nll:.4f} | "
                 f"vocab_size={len(self.piece_to_id)}"
             )
         
