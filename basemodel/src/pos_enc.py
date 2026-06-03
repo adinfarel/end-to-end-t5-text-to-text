@@ -103,7 +103,7 @@ class RelativePositionBias(nn.Module):
             
             relative_buckets += is_positive.to(torch.long) * num_buckets
             
-            relative_position += torch.abs(relative_position)
+            relative_position = torch.abs(relative_position)
         else:
             num_buckets = self.num_buckets
             
