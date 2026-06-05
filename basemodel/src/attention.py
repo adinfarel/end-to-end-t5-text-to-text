@@ -124,7 +124,7 @@ class EncoderSelfAttention(nn.Module):
         use_alternating_attention: bool = False,
         window_size: int = 3,
         relative_num_buckets: int = 32,
-        relative_max_distance: int = 128,
+        relative_max_distances: int = 128,
     ) -> None:
         super().__init__()
         
@@ -162,7 +162,7 @@ class EncoderSelfAttention(nn.Module):
         )
         
         self.relative_bias = (
-            RelativePositionBias(num_heads=self.n_heads, num_buckets=relative_num_buckets, max_distance=relative_max_distance, bidirectional=True)
+            RelativePositionBias(num_heads=self.n_heads, num_buckets=relative_num_buckets, max_distance=relative_max_distances, bidirectional=True)
             if self.position_encoding == "relative_bias"
             else None
         )
@@ -334,7 +334,7 @@ class DecoderSelfAttention(nn.Module):
         self,
         embed_dim: int,
         n_heads: int,
-        dropout: int,
+        dropout: float,
         position_encoding: PositionalEncoding = "relative_bias",
         use_sliding_window: bool = False,
         window_size: int = 128,
