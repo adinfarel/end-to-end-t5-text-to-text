@@ -21,11 +21,11 @@ dependencies = [
     "python-box",
     "nltk",
     "sacrebleu",
-    "torch"
+    "torch",
 ]
 
 [project.scripts]
-almond-train-tokenizer = "tokenizer.train:main"
+almond-train-tokenizer = "tokenizer.train:train_tokenizer"
 almond-pretrain        = "basemodel.training.train:main"
 almond-finetune        = "finetune.training.train:main"
 
