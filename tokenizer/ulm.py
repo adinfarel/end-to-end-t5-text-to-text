@@ -11,9 +11,9 @@ import json
 import math
 import re
 from collections import Counter
-from itertools import islice
 from pathlib import Path
 from collections.abc import Iterator, Iterable
+from tqdm import tqdm
 
 class AlmondUnigramTokenizer:
     """SentencePiece-style Unigram tokenizer."""
@@ -1074,7 +1074,7 @@ class AlmondUnigramTokenizer:
         
         print(f"Initial vocab size: {len(self.piece_to_id)}")
         
-        for step in range(1, num_em_steps + 1):
+        for step in tqdm(range(1, num_em_steps + 1), desc="EM-Step"):
             avg_nll = self._em_step(
                 texts=texts,
                 max_piece_length=max_piece_length,
