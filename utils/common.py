@@ -5,6 +5,7 @@ Helper function or Utilities for production project
 '''
 
 import yaml
+import json
 from pathlib import Path
 from box import Box
 
@@ -29,3 +30,10 @@ def load_yaml(file: Path, use_box: bool = True) -> Box | dict:
         return Box(content)
     
     return content
+
+def save_yaml(file: Path, content: dict) -> None:
+    '''Save YAML file.'''
+    ensure_parent_exist(file)
+    
+    with open(file, 'w', encoding='utf-8') as f:
+        yaml.safe_dump(content, f)
