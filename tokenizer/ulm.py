@@ -179,6 +179,7 @@ class AlmondUnigramTokenizer:
             "unk_token_id": self.unk_token_id,
             "eos_token_id": self.eos_token_id,
             "decoder_start_token_id": self.decoder_start_token_id,
+            "unk_log_prob": self.unk_log_prob
         }
         
         with path.open("w", encoding="utf-8") as f:
@@ -216,6 +217,7 @@ class AlmondUnigramTokenizer:
             "unk_token_id",
             "eos_token_id",
             "decoder_start_token_id",
+            "unk_log_prob",
         }
         
         missing_keys = required_keys - set(state.keys())
@@ -250,6 +252,7 @@ class AlmondUnigramTokenizer:
         self.unk_token_id = int(state["unk_token_id"])
         self.eos_token_id = int(state["eos_token_id"])
         self.decoder_start_token_id = int(state["decoder_start_token_id"])
+        self.unk_log_prob = float(state["unk_log_prob"])
         
         self._validate_loaded_state()
         
@@ -291,7 +294,7 @@ class AlmondUnigramTokenizer:
                     f"expected {expected_id}, got {actual_id}"
                 )
         
-        if self.decoder_start_token_id != self.eos_token_id:
+        if self.decoder_start_token_id != self.pad_token_id:
             raise ValueError(
                 f"decoder_start_token_id should be the same as eos_token_id in loaded state: "
                 f"expected {self.eos_token_id}, got {self.decoder_start_token_id}"
@@ -577,7 +580,7 @@ class AlmondUnigramTokenizer:
         self.pad_token_id = self.piece_to_id.get(self.pad_token, None)
         self.unk_token_id = self.piece_to_id.get(self.unk_token, None)
         self.eos_token_id = self.piece_to_id.get(self.eos_token, None)
-        self.decoder_start_token_id = self.eos_token_id
+        self.decoder_start_token_id = self.pad_token_id
     
     def _is_initialized(self) -> bool:
         """Check if the vocabulary has been initialized."""
@@ -924,7 +927,7 @@ class AlmondUnigramTokenizer:
         for piece in self.piece_log_probs:
             updated_counts[piece] = total_expected_counts.get(piece, 0.0) + smoothing
         
-        normalizer = sum(expected_counts.values())
+        normalizer = sum(updated_counts.values())
         
         if normalizer <= 0:
             raise RuntimeError(f"invalid EM normalizer: {normalizer}")
@@ -965,7 +968,7 @@ class AlmondUnigramTokenizer:
             if len(piece) == 1
         }
         
-        normal_budget = target_vocab_size - len(required_pieces) 
+        normal_budget = target_vocab_size - len(self.special_tokens) 
         
         if len(required_pieces) > normal_budget:
             normal_budget = len(required_pieces)
