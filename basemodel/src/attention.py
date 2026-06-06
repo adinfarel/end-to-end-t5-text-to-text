@@ -248,8 +248,8 @@ class EncoderSelfAttention(nn.Module):
             raise ValueError("all tokens are padding; cannot run unpadded attention.")
         
         Q = self.query(x_unpadded)
-        K = self.query(x_unpadded)
-        V = self.query(x_unpadded)
+        K = self.key(x_unpadded)
+        V = self.value(x_unpadded)
         
         Q = Q.view(1, total_tokens, self.n_heads, self.head_size).transpose(1, 2)
         K = K.view(1, total_tokens, self.n_heads, self.head_size).transpose(1, 2)
@@ -324,9 +324,9 @@ class EncoderSelfAttention(nn.Module):
         if self.use_unpadding:
             if attn_mask is None:
                 raise ValueError("attn_mask is required when use_padding=True")
-            return self._forward_padded(x, attn_mask)
+            return self._forward_unpadded(x, attn_mask)
         
-        return self._forward_unpadded(x, attn_mask)
+        return self._forward_padded(x, attn_mask)
 
 class DecoderSelfAttention(nn.Module):
     """Decoder causal self-attention."""
@@ -451,10 +451,14 @@ class DecoderSelfAttention(nn.Module):
                 query_position_offset=past_len
             )
         
-        key_padding_mask = _build_key_padding_mask(attn_mask=attn_mask, dtype=Q.dtype)
+        # key_padding_mask = _build_key_padding_mask(attn_mask=attn_mask, dtype=Q.dtype)
         
-        if key_padding_mask is not None and not use_cache:
-            final_mask = final_mask + key_padding_mask
+        # if key_padding_mask is not None and not use_cache:
+        #     final_mask = final_mask + key_padding_mask
+        
+        if attn_mask is not None:
+            key_padding_mask = _build_key_padding_mask(attn_mask=attn_mask, dtype=Q.dtype)
+            final_mask = final_mask + key_padding_mask if key_padding_mask is not None else final_mask
         
         if self.relative_bias is not None:
             position_bias = self.relative_bias(
@@ -519,8 +523,8 @@ class CrossAttention(nn.Module):
                 f"encoder_hidden must have shape (B, T_enc, C), got {encoder_hidden.shape}"
             )
         
-        B, T_dec, C = encoder_hidden.shape
-        B_enc, T_enc, C_enc = decoder_hidden.shape
+        B, T_dec, C = decoder_hidden.shape
+        B_enc, T_enc, C_enc = encoder_hidden.shape
         
         if B != B_enc:
             raise ValueError(f"batch mismatch: decoder B={B}, encoder B={B_enc}")
@@ -552,7 +556,7 @@ class CrossAttention(nn.Module):
             key=K,
             value=V, #type: ignore
             attn_mask=final_mask,
-            is_causal=True,
+            is_causal=False,
             dropout_p=self.dropout if self.training else 0.0,
         )
         
