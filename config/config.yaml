@@ -6,12 +6,51 @@ datasets:
   output_dataset_raw: data/pretrain/raw/wiki_en_id.txt
 
 tokenizer:
-  vocab_size: 8000
-  seed_vocab_size: 30000
-  max_piece_length: 12
-  num_em_steps: 4
+  vocab_size: 6000
+  seed_vocab_size: 20000
+  max_piece_length: 8
+  num_em_steps: 2
   shrinking_factor: 0.75
   smoothing: 1e-8
   whitespace_marker: _
   num_extra_ids: 100
-  output_tokenizer_path: model/tokenizer/tokenizer/states.json
+  output_tokenizer_path: model/tokenizer/states.json
+  pad_token_id: 0
+  unk_token_id: 1
+  eos_token_id: 2
+  decoder_start_token_id: 0
+
+model:
+  max_encoder_len: 128
+  max_decoder_len: 128
+
+  embed_dim: 256
+  n_heads: 8
+  n_encoder_blocks: 6
+  n_decoder_blocks: 6
+
+  dropout: 0.1
+
+  position_encoding: relative_bias
+  relative_num_buckets: 32
+  relative_max_distances: 128
+
+  use_encoder_unpadding: false
+  use_encoder_alternating_attention: false
+  use_decoder_sliding_window: false
+  window_size: 32
+
+  tie_word_embeddings: true
+
+pretrain:
+  batch_size: 32
+  learning_rate: 3-e4
+  weight_decay: 0.01
+  
+  epochs: 15
+  eval_interval: 3
+
+  mask_prob: 0.15
+  mean_noise_span_length: 3.0
+
+  grad_clip: 1.0
