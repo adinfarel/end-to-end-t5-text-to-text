@@ -1,3 +1,9 @@
+pipeline:
+	get-datasets
+	train-tokenizer
+	train-model
+
+
 get-datasets:
 	python -m basemodel.data.dataset
 
