@@ -44,8 +44,10 @@ model:
 
 pretrain:
   batch_size: 32
-  learning_rate: 3-e4
+  learning_rate: 3e-4
   weight_decay: 0.01
+  train_ratio: 0.8
+  pretrain_model_path: model/pretrain
   
   epochs: 15
   eval_interval: 3
@@ -54,3 +56,9 @@ pretrain:
   mean_noise_span_length: 3.0
 
   grad_clip: 1.0
+
+  min_chars: 20
+  max_chars: 300
+
+  early_stopping: true
+  early_stopping_patience: 3
