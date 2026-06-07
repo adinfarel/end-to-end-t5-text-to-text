@@ -35,11 +35,11 @@ def eval_loss(model: AlmondT5Model, val_loader: DataLoader) -> float:
         
         with torch.autocast(device_type=DEVICE, dtype=DTYPE, enabled=(DEVICE == "cuda")):
             _, loss = model(
-                encoder_input_ids=encoder_input_ids,
-                decoder_input_ids=decoder_input_ids,
+                encoder_inputs=encoder_input_ids,
+                decoder_inputs=decoder_input_ids,
                 decoder_labels=labels,
-                encoder_attn_mask=encoder_attn_mask,
-                decoder_attn_mask=decoder_attn_mask,
+                enc_attn_mask=encoder_attn_mask,
+                dec_attn_mask=decoder_attn_mask,
                 use_cache=False,
             )
 
@@ -102,8 +102,9 @@ def main() -> None:
     print("LABELS            : ", sample["labels"][0])
     
     # Setup component
-    best_model_path = Path(CONFIG.pretrain.pretrain_model_path) / "best_model.pt"
-    ckpt_model_path = Path(CONFIG.pretrain.pretrain_model_path) / "ckpt_latest.pt"
+    pos_enc = CONFIG.model.position_encoding
+    best_model_path = Path(CONFIG.pretrain.pretrain_model_path) / f"best_model_{pos_enc}.pt"
+    ckpt_model_path = Path(CONFIG.pretrain.pretrain_model_path) / f"ckpt_latest_{pos_enc}.pt"
     
     print("SETUP COMPONENT TRAINING")
     optimizer = torch.optim.AdamW(
@@ -150,11 +151,11 @@ def main() -> None:
             optimizer.zero_grad(set_to_none=True)
             with torch.autocast(device_type=DEVICE, dtype=DTYPE, enabled=(DEVICE == "cuda")):
                 _, loss = model(
-                    encoder_input_ids=encoder_input_ids,
-                    decoder_input_ids=decoder_input_ids,
+                    encoder_inputs=encoder_input_ids,
+                    decoder_inputs=decoder_input_ids,
                     decoder_labels=labels,
-                    encoder_attn_mask=encoder_attn_mask,
-                    decoder_attn_mask=decoder_attn_mask,
+                    enc_attn_mask=encoder_attn_mask,
+                    dec_attn_mask=decoder_attn_mask,
                     use_cache=False,
                 )
             
