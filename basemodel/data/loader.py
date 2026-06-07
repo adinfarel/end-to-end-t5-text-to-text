@@ -161,6 +161,9 @@ def create_noise_mask(
 ) -> list[bool]:
     if length <= 0:
         return []
+
+    if length <= 1:
+        return [False] * length
     
     if not 0.0 < noise_density < 1.0:
         raise ValueError(f"noise_density must be between 0 and 1, got {noise_density}")
@@ -305,7 +308,7 @@ def make_t5_span_corruption_example(
     encoder_input_ids = encoder_input_ids[:max_encoder_len] #type: ignore
     
     if encoder_input_ids[-1] != tokenizer.eos_token_id:
-        encoder_input_ids[-1] = [tokenizer.eos_token_id] #type: ignore
+        encoder_input_ids[-1] = tokenizer.eos_token_id
     
     labels = labels[:max_decoder_len]
     

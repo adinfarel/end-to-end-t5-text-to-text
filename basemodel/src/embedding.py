@@ -11,10 +11,10 @@ class Embedding(nn.Module):
     def __init__(self, vocab_size: int, embed_dim: int) -> None:
         super().__init__()
         
-        if isinstance(vocab_size, int):
+        if not isinstance(vocab_size, int):
             raise TypeError(f"vocab_size must be int, got{vocab_size}")
         
-        if isinstance(embed_dim, int):
+        if not isinstance(embed_dim, int):
             raise TypeError(f"embed_dim must be int, got{embed_dim}")
         
         if vocab_size <= 0:

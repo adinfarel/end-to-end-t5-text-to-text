@@ -54,7 +54,7 @@ class AlmondT5Model(nn.Module):
         
         self.encoder_ln_f = RMSNorm(embed_dim=config.model.embed_dim)
         self.decoder_ln_f = RMSNorm(embed_dim=config.model.embed_dim)
-        self.lm_head = nn.Linear(config.model.embed_dim, config.tokenizer.vocab_size)
+        self.lm_head = nn.Linear(config.model.embed_dim, config.tokenizer.vocab_size, bias=False)
         
         if getattr(config.model, "tie_word_embeddings", True):
             self.lm_head.weight = self.embedding.embedding.weight
@@ -113,12 +113,12 @@ class AlmondT5Model(nn.Module):
         dec_attn_mask: torch.Tensor | None = None,
         use_cache: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor | None]:
-        encoder_hidden = self.encoder(
+        encoder_hidden = self.encode(
             encoder_inputs,
             enc_attn_mask,
         )
         
-        decoder_hidden = self.decoder(
+        decoder_hidden = self.decode(
             decoder_inputs,
             encoder_hidden,
             dec_attn_mask,
@@ -183,7 +183,7 @@ class AlmondT5Model(nn.Module):
         for _ in range(max_new_tokens):
             decoder_attn_mask = torch.ones_like(generated, dtype=torch.long)
             
-            decoder_hidden = self.decoder(
+            decoder_hidden = self.decode(
                 generated,
                 encoder_hidden,
                 decoder_attn_mask,

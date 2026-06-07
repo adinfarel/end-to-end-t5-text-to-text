@@ -93,7 +93,7 @@ def _build_sliding_window_mask(
     
     query_positions = (
         torch.arange(query_len, device=device) + query_position_offset
-    )[: None]
+    )[:, None]
     
     key_positions = torch.arange(key_len, device=device)[None, :]
     
