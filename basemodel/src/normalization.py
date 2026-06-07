@@ -4,8 +4,6 @@ basemodel/src/normalization.py
 Build normalization layer for normalize hidden states to prevent vanishing/exploding gradient, dying ReLU, saturated Tanh
 '''
 
-from turtle import forward
-
 import torch
 import torch.nn as nn
 

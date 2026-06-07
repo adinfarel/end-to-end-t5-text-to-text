@@ -4,7 +4,6 @@ basemodel/src/t5.py
 Create t5 model for this project
 '''
 
-from numpy import squeeze
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
