@@ -3,3 +3,6 @@ get-datasets:
 
 train-tokenizer:
 	almond-train-tokenizer
+
+train-model:
+	almond-pretrain
