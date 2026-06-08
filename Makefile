@@ -3,6 +3,9 @@ pipeline:
 	train-tokenizer
 	train-model
 
+# ----------------------------------
+# PRETRAIN
+# ----------------------------------
 
 get-datasets:
 	python -m basemodel.data.dataset
@@ -15,3 +18,10 @@ train-model:
 
 inference-pretrain:
 	python -m tests.inference_pretrain
+
+# ----------------------------------
+# FINETUNE
+# ----------------------------------
+
+get-datasets-ft:
+	python -m finetune.data.dataset

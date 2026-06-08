@@ -10,6 +10,8 @@ ENV/
 # Data
 data/pretrain/raw/*
 !data/pretrain/raw/README.md
+data/finetune/raw/*
+!data/finetune/raw/README.md
 
 # Model
 model/tokenizer/*
