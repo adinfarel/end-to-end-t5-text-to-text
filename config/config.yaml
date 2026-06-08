@@ -62,3 +62,8 @@ pretrain:
 
   early_stopping: true
   early_stopping_patience: 3
+
+finetune:
+  dataset_name: kaitchup/opus-Indonesian-to-English
+  max_dataset: 25000
+  output_dataset_raw: data/finetune/raw/bilingual_en_id.jsonl
