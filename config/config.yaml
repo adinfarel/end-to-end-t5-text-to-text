@@ -67,3 +67,22 @@ finetune:
   dataset_name: kaitchup/opus-Indonesian-to-English
   max_dataset: 25000
   output_dataset_raw: data/finetune/raw/bilingual_en_id.jsonl
+
+  train_ratio: 0.8
+  prefix: 'translate English to Indonesian: '
+
+  shuffle: true
+  ignore_index: -100
+
+  batch_size: 32
+  num_workers: 0
+  finetune_model_path: model/finetune
+
+  learning_rate: 1e-4
+  grad_clip: 1.0
+  epochs: 15
+  eval_interval: 3
+  weight_decay: 0.01
+
+  early_stopping: true
+  early_stopping_patience: 4

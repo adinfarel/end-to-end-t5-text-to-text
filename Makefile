@@ -25,3 +25,6 @@ inference-pretrain:
 
 get-datasets-ft:
 	python -m finetune.data.dataset
+
+train-finetune:
+	almond-finetune
