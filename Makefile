@@ -28,3 +28,6 @@ get-datasets-ft:
 
 train-finetune:
 	almond-finetune
+
+inference-finetune:
+	python -m tests.inference_finetune
