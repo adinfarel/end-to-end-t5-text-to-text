@@ -12,3 +12,6 @@ train-tokenizer:
 
 train-model:
 	almond-pretrain
+
+inference-pretrain:
+	python -m tests.inference_pretrain

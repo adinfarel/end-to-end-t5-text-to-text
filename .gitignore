@@ -14,3 +14,5 @@ data/pretrain/raw/*
 # Model
 model/tokenizer/*
 !model/tokenizer/README.md
+model/pretrain/*
+!model/pretrain/README.md
