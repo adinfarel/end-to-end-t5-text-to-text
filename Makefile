@@ -31,3 +31,6 @@ train-finetune:
 
 inference-finetune:
 	python -m tests.inference_finetune
+
+eval-finetune:
+	python -m eval.translation_eval

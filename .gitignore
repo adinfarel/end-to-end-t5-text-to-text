@@ -18,3 +18,5 @@ model/tokenizer/*
 !model/tokenizer/README.md
 model/pretrain/*
 !model/pretrain/README.md
+model/finetune/*
+!model/finetune/README.md
