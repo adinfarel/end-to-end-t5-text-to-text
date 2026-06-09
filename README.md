@@ -52,14 +52,14 @@ Ablation: RoPE vs Relative Position Bias
 | Component | Vanilla T5 | AlmondT5 | Why |
 |-----------|-----------|----------|-----|
 | Positional Encoding | Relative Bias | **RoPE + Relative Bias** (ablation) | Compare both strategies |
-| Normalization | Pre-LN RMSNorm | Pre-LN RMSNorm ✅ | Same, training stability |
+| Normalization | Pre-LN RMSNorm | Pre-LN RMSNorm   | Same, training stability |
 | Encoder FFN | ReLU | GeGLU | Better gated non-linearity |
 | Decoder FFN | ReLU | SwiGLU | Better gated non-linearity |
 | Encoder Attention | Full MHA | Alternating + Unpadding | Compute efficiency |
 | Decoder Attention | Full MHA | MHA + KV Cache | Efficient autoregressive inference |
 | Cross-Attention | Standard | Standard + KV Cache | Avoid encoder recompute |
-| Tokenizer | SentencePiece Unigram | SentencePiece Unigram ✅ | Faithful to T5 original |
-| Tied Embeddings | ✅ | ✅ | Share encoder/decoder/lm_head weights |
+| Tokenizer | SentencePiece Unigram | SentencePiece Unigram   | Faithful to T5 original |
+| Tied Embeddings |   |   | Share encoder/decoder/lm_head weights |
 
 **Model size:** ~15-20M parameters
 **Vocab size:** 6,000 (SentencePiece Unigram)
@@ -175,7 +175,7 @@ end-to-end-t5-text-to-text/
 ├── configs/
 │   └── config.yaml
 ├── tokenizer/
-│   ├── sp.py               # SentencePiece wrapper
+│   ├── ulm.py               # SentencePiece wrapper
 │   └── train.py            # Tokenizer training
 ├── data/
 │   ├── pretrain/
