@@ -180,10 +180,8 @@ end-to-end-t5-text-to-text/
 ├── data/
 │   ├── pretrain/
 │   │   ├── raw/            # Wikipedia EN + ID corpus
-│   │   └── processed/      # Span-corrupted .jsonl
 │   └── finetune/
 │       ├── raw/            # OPUS EN-ID bilingual pairs
-│       └── processed/
 ├── basemodel/
 │   ├── model/              # Encoder, Decoder, T5, Block, Attention, GeGLU, SwiGLU, RoPE, RelBias
 │   └── training/           # Pre-training loop (span corruption)
