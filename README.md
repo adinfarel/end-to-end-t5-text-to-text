@@ -222,10 +222,10 @@ pip install -e ".[dev]"
 make train-tokenizer
 
 # 2. Pre-train with span corruption
-make pretrain
+make inference-pretrain
 
 # 3. Fine-tune EN→ID translation
-make finetune
+make inference-finetune
 
 # 4. Evaluate (BLEU + chrF)
 make eval-finetune
